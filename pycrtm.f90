@@ -236,6 +236,7 @@ SUBROUTINE wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     CALL check_LOGICAL_status( any(.not. crtm_options_associated( options ) ),'options failed to create.' )
     CALL set_emissivity(options, n, use_passed_emissivity)
 
+    !$ CALL omp_set_num_threads(1)
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
@@ -581,6 +582,7 @@ SUBROUTINE wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     CALL check_LOGICAL_status( any(.not. crtm_options_associated( options ) ),'options failed to create' )
     CALL set_emissivity(options, n,  use_passed_emissivity)
 
+    !$ CALL omp_set_num_threads(1)
     err_stat = CRTM_K_Matrix( atm        , &  ! FORWARD  Input
                               sfc        , &  ! FORWARD  Input
                               rts_K      , &  ! K-MATRIX Input
