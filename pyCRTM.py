@@ -5,7 +5,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 thisDir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0,thisDir)
-from pycrtm import pycrtm
+#get around extra wrapper layer thanks to scikit-build
+from pycrtm import pycrtm as p
+pycrtm = p.pycrtm
 from crtm_io import readSpcCoeff
 from collections import namedtuple
 # Absorber IDs taken from CRTM.
@@ -99,7 +101,24 @@ def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1, additionalGases=
 
 class pyCRTM:
     def __init__(self):
-        self.coefficientPath = ''
+        thisDir = os.path.split(os.path.abspath(__file__))[0]
+        cfg = configparser.ConfigParser()
+        # for weirdness when doing a distribution wide vs. local install.
+        if ( os.path.exists( os.path.join(thisDir,'pyCRTM','pycrtm_setup.txt') ) ):
+            pycrtm_setup_dir = os.path.join(thisDir,'pyCRTM','pycrtm_setup.txt')
+        else:
+            f = open(os.path.join(thisDir,'pyCRTM_JCSDA-1.0.0.dist-info','RECORD'))
+            lines = f.readlines()
+            for l in lines:
+                if('pycrtm_setup.txt' in l):
+                    pycrtm_setup_dir = l.split('.txt')[0]
+                    pycrtm_setup_dir = pycrtm_setup_dir+'.txt'
+        cfg.read( os.path.join(thisDir,pycrtm_setup_dir) )
+        if(cfg['Setup']['coef_with_install'] == 'False'):
+            self.coefficientPath = cfg['Coefficients']['path']+"/"
+        else:
+            self.coefficientPath = os.path.join(thisDir,'coefficients')+'/'
+
         self.sensor_id = ''
         self.profiles = []
         self.traceConc = []
@@ -303,63 +322,4 @@ class pyCRTM:
 
         if(self.StoreEmis):
             self.surfEmisRefl = pycrtm.emissivityreflectivity
-if __name__ == "__main__":
-    thisDir = os.path.dirname(os.path.abspath(__file__))
-    cases = os.listdir( os.path.join(thisDir,'testCases','data') )
-    cases.sort()
-    pathInfo = configparser.ConfigParser()
-    pathInfo.read( os.path.join(thisDir,'crtm.cfg') ) 
-
-
-    profiles = profilesCreate( 4, 92 )
-    
-    for i,c in enumerate(cases):
-        h5 = h5py.File(os.path.join(thisDir, 'testCases','data',c) , 'r')
-        profiles.Angles[i,0] = h5['zenithAngle'][()]
-        profiles.Angles[i,1] = 999.9 
-        profiles.Angles[i,2] = 100.0  # 100 degrees zenith below horizon.
-        profiles.Angles[i,3] = 0.0 # zero solar azimuth 
-        profiles.Angles[i,4] = h5['scanAngle'][()]
-        profiles.DateTimes[i,0] = 2001
-        profiles.DateTimes[i,1] = 1
-        profiles.DateTimes[i,2] = 1
-        profiles.Pi[i,:] = np.asarray(h5['pressureLevels'] )
-        profiles.P[i,:] = np.asarray(h5['pressureLayers'][()])
-        profiles.T[i,:] = np.asarray(h5['temperatureLayers'])
-        profiles.Q[i,:] = np.asarray(h5['humidityLayers'])
-        profiles.O3[i,:] = np.asarray(h5['ozoneConcLayers'])
-        profiles.CO2[i,:] = np.asarray(h5['co2ConcLayers'])
-        profiles.clouds[i,:,0,0] = np.asarray(h5['cloudConcentration'])
-        profiles.clouds[i,:,0,1] = np.asarray(h5['cloudEffectiveRadius'])
-        profiles.aerosols[i,:,0,0] = np.asarray(h5['aerosolConcentration'])
-        profiles.aerosols[i,:,0,1] = np.asarray(h5['aerosolEffectiveRadius'])
-        profiles.aerosolType[i] = h5['aerosolType'][()]
-        profiles.cloudType[i] = h5['cloudType'][()]
-        profiles.cloudFraction[i,:] = h5['cloudFraction'][()]
-        profiles.climatology[i] = h5['climatology'][()]
-        profiles.surfaceFractions[i,:] = h5['surfaceFractions']
-        profiles.surfaceTemperatures[i,:] = h5['surfaceTemperatures']
-        profiles.Salinity[i,1] = 33.0 
-        profiles.windSpeed10m[i] = 5.0
-        profiles.windDirection10m[i] = h5['windDirection10m'][()]
-        # land, soil, veg, water, snow, ice
-        profiles.surfaceTypes[i,0] = h5['landType'][()]
-        profiles.surfaceTypes[i,1] = h5['soilType'][()]
-        profiles.surfaceTypes[i,2] = h5['vegType'][()]
-        profiles.surfaceTypes[i,3] = h5['waterType'][()]
-        profiles.surfaceTypes[i,4] = h5['snowType'][()]
-        profiles.surfaceTypes[i,5] = h5['iceType'][()]
-        profiles.LAI[i] = h5['LAI'][()]
-        h5.close()
-    crtmOb = pyCRTM()
-    crtmOb.profiles = profiles
-    crtmOb.coefficientPath = pathInfo['CRTM']['coeffs_dir']
-    crtmOb.sensor_id = 'atms_npp'
-    crtmOb.nThreads = 4
-    crtmOb.loadInst()
-    crtmOb.runDirect()
-    crtmOb.runK()
-
-
-
 

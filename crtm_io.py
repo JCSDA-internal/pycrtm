@@ -189,10 +189,10 @@ def readSpcCoeff(fname):
 
     o['antenna_correction_present'], =  struct.unpack('i',f.read(struct.calcsize('i')))
     f.read(8)
-     
-    o['nlte_correction_present'], = struct.unpack('i',f.read(struct.calcsize('i')))
-    f.read(8)
-    if(o['nlte_correction_present']>0): o = readNLTE(f,o)
+    if(o['antenna_correction_present']==0): 
+        o['nlte_correction_present'], = struct.unpack('i',f.read(struct.calcsize('i')))
+        f.read(8)
+        if(o['nlte_correction_present']>0): o = readNLTE(f,o)
     spcCoeff = o 
     f.close()
 

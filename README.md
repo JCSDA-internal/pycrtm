@@ -11,75 +11,62 @@ This `README` has 4 parts:
 
 1. Installation -- installing this library
 2. Test/Examples -- describing test in testCases subdirectory
-3. Python path etc -- how to use this library in a project.
+3. Importing -- how to use this library in a project.
 4. Using the interface -- HOWTO/run through on how to use this interface
 
-- Bryan Karpowicz -- October 23, 2020
+- Bryan Karpowicz -- March 20, 2021
 ---------------------------------------------------------------------------------------- 
 
 ## 1. Installation:
- 
-Done via the `setup_pycrtm.py` script  
-
-Usage:
+- For the novice that doesn't care about where or how this installs, look at the crtm-bundle and run kickstart_pyCRTM.sh Otherwise...
+- Dependencies CRTM, h5py, numpy and scikit-build (install those first, if you don't have them). Note crtm must be built with the static option (`ecbuild --static`) 
+- Configuration
+First modify `setup.cfg` to point to the crtm install location (path underneath should contain `lib/libcrtm.a`). 
 ```
-usage: setup_pycrtm.py [-h] --install INSTALL --repos RTPATH --coef COEF
-                       --ncpath NCPATH --h5path H5PATH --jproc JPROC
-                       [--arch ARCH] [--inplace]
-the following arguments are required: --install, --repos, --coef, --ncpath, --h5path, --jproc
+[Setup]
+# Specify the location of the crtm install (ecbuild install ONLY)
+crtm_install = /discover/nobackup/bkarpowi/github/JCSDA_crtm/crtm-bundle/crtm/build
+# Download Coefficients
+# Controls whether coefficients are downloaded
+download = True
+#This will move the coefficients with the package install.
+coef_with_install = True
+[Coefficients]
+# Use to specify alternative coefficient file location where Little Endian Coefficient files are stored.
+# If user desires coefficients to be stored with the installed package, leave this alone.
+# If user selects coef_with_install = False, this must be specified.
+# set argument below (path) to the full path of the coefficients.
+path = /discover/nobackup/projects/gmao/obsdev/bkarpowi/tstCoef/
+```
+In the example above the coefficients will be included with the pycrtm install. To change this, set `coef_with_install` and set `path` to the location where you would like crtm coefficients stored. If you already have a directory with coefficients, you can set `download` and `coef_with_install` to False, and set `path` to that location. The pycrtm configuration will then point to the location in `path`.  
+
+- Installation 
+There are two recommended ways to install. The first, if the user has full write access to their python distribution, it may be installed globally using:
+```
+python3 setup.py install 
+```
+This will take some time as it will download coefficients, move them around, compile the pycrtm module, and link against th crtm library.
+
+The second, if the user doesn't have full write access to their python distribution is to first build a wheel, and install using pip:
+```
+python3 setup.py bdist_wheel
+```
+This will take some time as it will download coefficients, move them around, compile the pycrtm module, and link against the crtm library. Once the wheel has been built, it may be installed locally using pip:
+```
+pip install dist/pyCRTM_JCSDA*.whl --target /discover/nobackup/projects/gmao/obsdev/bkarpowi/pythonModules/
+```
+paired with appending `/discover/nobackup/projects/gmao/obsdev/bkarpowi/pythonModules/` to the `PYTHONPATH` environment variable in your .bashrc or .cshrc.
+
+For Bash this is:
+```
+export PYTHONPATH="${PYTHONPATH}:/discover/nobackup/projects/gmao/obsdev/bkarpowi/pythonModules/"
+```
+For Tcsh/csh:
+```
+setenv PYTHONPATH ${PYTHONPATH}:/discover/nobackup/projects/gmao/obsdev/bkarpowi/pythonModules
 ```
 
-### Required:
-* `--install` -  Install path to crtm library or where the user would like the crtm install directory (e.g., /home/user/ if you want crtm_v2.4.0 to install in /home/user/crtm_v2.4.0)
-* `--repos`   -  Path to CRTM git checkout (e.g. REL-2.4.0) 
-* `--coef`    -  Path where the crtm coefficients are stored under subdirectory crtm_coef_pycrtm
-* `--ncpath`   -  Path to netcdf library (root path e.g. /usr/local/Cellar/netcdf/4.7.4_1, where lib and include are subdirectories underneath) 
-* `--h5path`   -  Path to hdf5 library (root path e.g. /usr/local/Cellar/hdf5/1.12.0_1, where lib and include are subdirectories underneath) 
-* `--jproc`   -  The number of threads to pass compiler
-
-### Optional:
-* `--arch` select compiler/environment gfortran (gcc), ifort (intel) have been tested along with openmp enabled equiavalents (gfortran-openmp, ifort-openmp). Default gfortran-openmp
-* `--inplace` this will skip the building of CRTM, but instead just compile pycrtm interface and link to the install path (e.g.,--install /home/user/, if you have previously installed to /home/user/crtm_v2.4.0)`.
-
-
-Example to install CRTM in this directory under a subdirectory under the CRTM git checkout, and place the coefficients in this diectory`:
-```
-./setup_pycrtm.py  --install $PWD/../REL-2.4.0/ --repos $PWD/../REL-2.4.0 --jproc 1 --coef $PWD --ncpath /usr/local/Cellar/netcdf/4.7.4_1 --h5path /usr/local/Cellar/hdf5/1.12.0_1 --arch gfortran-openmp
-```
-Once completed:
-
-* `$PWD/pycrtm.cpython-37m-PLATFORM.so` <-- (will always reside here) f2py interface compiled by setup 
-* `$PWD/crtm.cfg`                       <-- Path where the CRTM coefficients are stored 
-* `$PWD/pycrtm.stde`                    <-- standard error captured from compilation
-* `$PWD/pycrtm.stdo`                    <-- standard output captured from compilation 
-* `$PWD/sgnFile.pyf`                    <-- automatically generated f2py interface file
-
-Following the example the CRTM will be installed here:
-
-* `$PWD/../REL-2.4.0/config.log`                        <-- usual config associated with CRTM
-* `$PWD/../REL-2.4.0/crtm_v2.4.0/include`               <-- path to all compiled fortran modules
-* `$PWD/../REL-2.4.0/crtm_v2.4.0/lib/libcrtm.a`         <-- usual crtm static library
-* `$PWD/crtm_coef_pycrtm`                               <-- path to crtm_coefficients
-
-To make things a bit simpler some installer scripts and scripts to load modules on the NASA NCCS discover cluster have been included:
-* `discover_install_gfortran_openmp.sh`     <-- will install using gfortran and OpenMP if you checkout the CRTM repository at ../REL-2.4.0 
-* `discover_install_ifort_openmp.sh`        <-- will install using ifort and OpenMP if you checkout the CRTM repository at ../REL-2.4.0
-* `discover_modules_gfortran_openmp.sh`	    <-- load the necessary modules whenever you want to run pycrtm using gfortran/OpenMP on discover
-* `discover_modules_ifort_openmp.sh`        <-- load the necessary modules whenever you want to run pycrtm using ifort/OpenMP on discover
-
-Note you will have to add the following to your .basrc (if you use bash):
-```bash
-export OPT='/discover/swdev/jcsda/modules'
-module use $OPT/modulefiles
-```
-If you use cshell you will need to add the following lines to your .cshrc:
-```csh
-setenv OPT /discover/swdev/jcsda/modules
-module use $OPT/modulefiles
-```
-For those on a Mac and use homebrew some installer scripts have been included:
-* `homebrew_install.sh`                     <-- will install on standard homebrew install using gfortran/OpenMP if you checkout the CRTM repository at ../REL-2.4.0
-* `homebrew_install_userdir.sh`             <-- will install on homebrew install configured to run in the user's directory using gfortran/OpenMP if you checkout the CRTM repository at ../REL-2.4.0
+Compiler options are handled autmoatically through cmake. On HPC systems this means loading the right set of modules. For example, if you would like pycrtm compiled with intel, you would load the same intel modules you used to build crtm. 
 
 ---------------------------------------------------------------------------------------- 
 
@@ -104,16 +91,9 @@ The following scripts will run CRTM without aerosols or clouds:
 For those Jupyter notebook fans, there is even Jupyter notebook example simulating ATMS:
 * `$PWD/testCases/test_atms.ipynb`
 
-## 3. Python path etc - needs work, but works for me at the moment: 
+## 3. Importing 
 
-Right now things aren't setup to install into a user's Python path. What I typically plan on doing is set this as a git submodule, and bring it into a project and import the module using something like:
 ```Python
-from pycrtm.pyCRTM import profilesCreate, pyCRTM
-```
-Or, do something like is done in the testCases scripts and insert the path, then import.
-```Python
-pycrtmDir = [this directory]
-sys.path.insert(0,pycrtmDir)
 from pyCRTM import pyCRTM, profilesCreate
 ```
 ---------------------------------------------------------------------------------------- 
@@ -133,6 +113,7 @@ crtmOb.sensor_id = sensor_id
 crtmOb.nThreads = 4
 crtmOb.profiles = profiles
 ```
+Note that while the python interface allows for threads to be set, if your environment has the environment variable `OMP_NUM_THREADS` set, the number of threads will be set by the environment variable, and the argument passed through pyCRTM will be ignored.
 
 Next, the instrument is loaded/number of channels in the output structure are initialized:
 
@@ -161,5 +142,46 @@ Temperature_Jacobian = crtm.TK
 #Emissivity (nprofiles, nchan)
 Emissivity = crtmOb.surfEmisRefl
 ```
+Futher detail on setting profiles can be seen in the testCases directory, however, for quick reference and explanation of profile object:
+```Python
+        profiles.Angles[i,0] =  # instrument zenith Angle
+        profiles.Angles[i,1] =  # instrument azimuth Angle (optional)
+        profiles.Angles[i,2] =  # Solar zenith Angle 
+        profiles.Angles[i,3] =  # Solar Azimuth Angle 
+        profiles.Angles[i,4] =  # Instrument scan angle (see CRTM documentation. e.g., https://ftp.emc.ncep.noaa.gov/jcsda/CRTM/CRTM_User_Guide.pdf)
+        profiles.DateTimes[i,0] = #Year
+        profiles.DateTimes[i,1] = #Month
+        profiles.DateTimes[i,2] = #Day
+        profiles.Pi[i,:] =        #Pressure levels/interfaces in hPa
+        profiles.P[i,:] =         #Pressure layers 
+        profiles.T[i,:] =         #Temperature Layers
+        profiles.Q[i,:] =         #Specific humidity  relative to dry air in g/kg
+        profiles.O3[i,:] =        #Ozone concentration ppmv (dry air)
+        profiles.clouds[i,:,0,0] = #cloud concentration kg/m**2 (optional)
+        profiles.clouds[i,:,0,1] = #cloud effective radius microns (optional)
+        profiles.aerosols[i,:,0,0] = #aerosol concentration kg/m**2 (optional)
+        profiles.aerosols[i,:,0,1] = #aerosol effective radius microns (optional)
+        profiles.aerosolType[i] =    #integer representing aerosol type (optional !  1 = Dust 2 = Sea salt-SSAM  
+                                     # 3 = Sea salt-SSCM 4 = Sea salt-SSCM2 5 = Sea salt-SSCM3  6 = Organic carbon 7 = Black carbon 8 = Sulfate)
+        profiles.cloudType[i] =      #integer representing cloud type (optional)
+        profiles.cloudFraction[i,:] = #cloud fraction (optional)
+        profiles.climatology[i] =    #integer representing climatology 1-6 modtran style climatological profiles (optional)
+        profiles.surfaceFractions[i,:] = # fractions of land, water, snow, ice
+        profiles.surfaceTemperatures[i,:] = #surface temperatures (K) of land, water, snow, ice
+        profiles.Salinity[i] =              #salinity in PSU
+        profiles.windSpeed10m[i] =          #10m windspeed m/s
+        profiles.LAI[i] =                   #Leaf area index (optional)
+        profiles.windDirection10m[i] =      #10m wind direction (note opposite of atmospheric convention, uses oceanongrapher convention) deg E from N
+        # land, soil, veg, water, snow, ice
+        profiles.surfaceTypes[i,0] = #land classification type index refer to CRTM documentation (optional)
+        profiles.surfaceTypes[i,1] = #soil classification type index refer to CRTM documentation (optional)
+        profiles.surfaceTypes[i,2] = #vegetation type classification type index refer to CRTM documentation (optional)
+        profiles.surfaceTypes[i,3] = # water type (1=Sea water) check CRTM documentation for others.
+        profiles.surfaceTypes[i,4] = # snow type 1=old snow 2=new snow (optional).
+        profiles.surfaceTypes[i,5] = # ice type 1= new ice (optional) (optional)
+
+```
+
+
 ---------------------------------------------------------------------------------------- 
 

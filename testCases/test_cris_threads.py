@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-import configparser
 import os, h5py, sys 
 import numpy as np
 from matplotlib import pyplot as plt
-thisDir = os.path.dirname(os.path.abspath(__file__))
-parentDir = os.path.dirname(thisDir)
-sys.path.insert(0,parentDir)
 from pyCRTM import pyCRTM, profilesCreate
  
-def main(coefficientPath, sensor_id):
+def main(sensor_id):
     thisDir = os.path.dirname(os.path.abspath(__file__))
     casesIn = os.listdir( os.path.join(thisDir,'data') )
     casesIn.sort()
@@ -64,7 +60,6 @@ def main(coefficientPath, sensor_id):
 
     crtmOb = pyCRTM()
     crtmOb.profiles = profiles
-    crtmOb.coefficientPath = pathInfo['CRTM']['coeffs_dir']
     crtmOb.sensor_id = sensor_id
     crtmOb.nThreads = 10
 
@@ -105,9 +100,6 @@ def main(coefficientPath, sensor_id):
 
 
 if __name__ == "__main__":
-    pathInfo = configparser.ConfigParser()
-    pathInfo.read( os.path.join(parentDir,'crtm.cfg') ) 
-    coefficientPath = pathInfo['CRTM']['coeffs_dir']
     sensor_id = 'cris_npp'
-    main(coefficientPath, sensor_id)
+    main(sensor_id)
  
